@@ -37,9 +37,9 @@
  
 
  #include "Arduino.h"
-//  #include "AltSoftSerial.h"
+ #include "AltSoftSerial.h"
  #include "BareBoneSim800.h"
- #include "SoftwareSerial.h"
+//  #include "SoftwareSerial.h"
  
  // Initialize the constructors
  BareBoneSim800::BareBoneSim800()
@@ -58,7 +58,8 @@
 	 _passWord = passWord;
  }
 
-SoftwareSerial gsmSerial(8,9);
+// SoftwareSerial gsmSerial(8,9);
+AltSoftSerial gsmSerial;
  
  
  // 
@@ -195,7 +196,6 @@ SoftwareSerial gsmSerial(8,9);
 	gsmSerial.print(F("AT+SAPBR=2,1\r\n ")); // get context ip address
 	buffer=_readData(); 
 	delay(1000);
-
 }
 
 void BareBoneSim800::_disableBearerProfile(){
@@ -382,7 +382,8 @@ String BareBoneSim800::readSimIMEI(){
 	buffer = _readData(); //reads the result
 	int8_t index = buffer.indexOf("AT+CCID"); 
 	if( index != -1){
-		String imei = buffer.substring(index+7, buffer.length() );
+		int8_t ok_index = buffer.indexOf("OK");
+		String imei = buffer.substring(index+7, ok_index );
 		imei.trim();
 		return imei; 
 	} else {
@@ -449,7 +450,7 @@ String BareBoneSim800::getLocation(){
 	_buffer = _readData(); // This second read should work out
 	delay(100);
 	// here we disbale the bearer profile back
-	_disableBearerProfile();
+	// _disableBearerProfile();
 	if (_buffer.indexOf("0,") != -1){ // here we should fetch the result only if we get 0 and not error or some other numbers
 		return _buffer.substring(_buffer.indexOf("0,"),(_buffer.indexOf("OK")-4));
 	}
@@ -509,39 +510,39 @@ bool BareBoneSim800::gprsConnect(){
 	// This function connects to the internet 
 	gprsDisconnect();
 	String buffer;
-	_enableBearerProfile(); // Activate the GPRS connectivity 
-	// attach the GPRS service
 	gsmSerial.print(F("AT+CGATT=1\r\n"));
 	byte result = _checkResponse(20000);
 	delay(20);
 	if (result != OK)
 		return false;
+	_enableBearerProfile(); // Activate the GPRS connectivity 
+	// attach the GPRS service
 		
-	gsmSerial.print(F("AT+CIPMUX=0\r\n"));
-	result = _checkResponse(10000);
-	if (result != OK)
-		return false;
-	delay(10);
-	gsmSerial.print(F("AT+CSTT=\""));  
-	gsmSerial.print(_networkAPN);
-	gsmSerial.print(F("\",\""));
-	gsmSerial.print(_userName);
-	gsmSerial.print(F("\",\""));
-	gsmSerial.print(_passWord);
-	gsmSerial.print(F("\"\r\n")); //  
+	// gsmSerial.print(F("AT+CIPMUX=0\r\n"));
+	// result = _checkResponse(10000);
+	// if (result != OK)
+	// 	return false;
+	// delay(10);
+	// gsmSerial.print(F("AT+CSTT=\""));  
+	// gsmSerial.print(_networkAPN);
+	// gsmSerial.print(F("\",\""));
+	// gsmSerial.print(_userName);
+	// gsmSerial.print(F("\",\""));
+	// gsmSerial.print(_passWord);
+	// gsmSerial.print(F("\"\r\n")); //  
 
-	result = _checkResponse(60000);
-	if(result != OK)
-		return false;
-	delay(10);
-	gsmSerial.print(F("AT+CIICR\r\n"));
-	result = _checkResponse(85000); 
-	if(result != OK)
-		return false;
-	delay(10);
-	gsmSerial.print(F("AT+CIFSR\r\n"));
-	result = _checkResponse(5000); // this basically change to IP STATUS	
-	// but at the stage I believe IP will already be available
+	// result = _checkResponse(60000);
+	// if(result != OK)
+	// 	return false;
+	// delay(10);
+	// gsmSerial.print(F("AT+CIICR\r\n"));
+	// result = _checkResponse(85000); 
+	// if(result != OK)
+	// 	return false;
+	// delay(10);
+	// gsmSerial.print(F("AT+CIFSR\r\n"));
+	// result = _checkResponse(5000); // this basically change to IP STATUS	
+	// // but at the stage I believe IP will already be available
 	return true;	
 }
 
