@@ -69,7 +69,7 @@
 #define READY_TO_RECEIVE 10 // basically SMSGOOD means >
 #define OK 11
 
-#define DEBUG 0 //This enables debugging mode, to disable it - set value to 0
+#define DEBUG 1 //This enables debugging mode, to disable it - set value to 0
 
 
  
@@ -106,7 +106,6 @@
 	   void _enableBearerProfile();
 	   void _disableBearerProfile();
 	   
-
 	 public:
 	 
 	 BareBoneSim800();
@@ -129,11 +128,13 @@
 	 bool sendSMS(const char* number, char* text);
 	 String readSMS(uint8_t index); // reads an sms at a particular index
 	 String readSIMNumber(); //reads the sim registered number
+	 String readSimIMEI(); //reads the sim imei
 	 bool checkNewSMS(); //checks for new sms
 	 bool dellAllSMS(); // deletes all sms 
 	 
 	 String getTime(); // return time of the network
 	 String getLocation(); //return location of device
+	 void getParsedLocation(String* data); //return location in parsed format
 	 byte getBattPercent(); //returns the battery level in percentage
 	 
 	 // GPRS Connectivity
@@ -144,6 +145,7 @@
 	 //bool serverConnect(const char* host, const uint16_t port);
 	// String sendTCPData(char* data);
 	 String sendHTTPData(char* data);
+	 String sendHTTPPost(char* data);
 	 void closeHTTP();
 	 
  };

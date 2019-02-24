@@ -37,8 +37,9 @@
  
 
  #include "Arduino.h"
- #include "AltSoftSerial.h"
+//  #include "AltSoftSerial.h"
  #include "BareBoneSim800.h"
+ #include "SoftwareSerial.h"
  
  // Initialize the constructors
  BareBoneSim800::BareBoneSim800()
@@ -57,7 +58,7 @@
 	 _passWord = passWord;
  }
 
-AltSoftSerial gsmSerial;
+SoftwareSerial gsmSerial(8,9);
  
  
  // 
@@ -375,6 +376,20 @@ String BareBoneSim800::readSIMNumber(){
 		return "";
 }
 
+String BareBoneSim800::readSimIMEI(){
+	String buffer ="";
+	gsmSerial.print(F("AT+CCID\r\n"));
+	buffer = _readData(); //reads the result
+	int8_t index = buffer.indexOf("AT+CCID"); 
+	if( index != -1){
+		String imei = buffer.substring(index+7, buffer.length() );
+		imei.trim();
+		return imei; 
+	} else {
+		return "EROR IMEI";
+	}
+}
+
 bool BareBoneSim800::checkNewSMS(){
 	// This function checks if a new sms is available
 	int messageIndex = 0;
@@ -440,6 +455,21 @@ String BareBoneSim800::getLocation(){
 	}
 	else
 		return "0";
+}
+
+void BareBoneSim800::getParsedLocation(String *data){
+	String location = getLocation();
+	int8_t coma_pos = -1;
+	int8_t next_coma_pos = -1;
+	for(size_t i = 0; i <= 4; i++)
+	{
+		int8_t next_coma_pos = location.indexOf(",", coma_pos+1);
+		if (next_coma_pos == -1) next_coma_pos = location.length();
+		data[i]=location.substring(coma_pos+1, next_coma_pos);
+		coma_pos = next_coma_pos;
+	}
+	
+
 }
 
 byte BareBoneSim800::getBattPercent(){
@@ -513,13 +543,21 @@ bool BareBoneSim800::gprsConnect(){
 	result = _checkResponse(5000); // this basically change to IP STATUS	
 	// but at the stage I believe IP will already be available
 	return true;	
-	
 }
-	
+
+void BareBoneSim800::closeHTTP()
+{
+	// This close the TCP connection
+	gsmSerial.print("AT+HTTPTERM\r\n");
+	byte result = _checkResponse(10000);
+	delay(30);
+}
+
 String BareBoneSim800::sendHTTPData(char *data)
 {
+	closeHTTP();
 	// This function performs HTTP Client 
-	byte result;
+ 	byte result;
 	gsmSerial.print(F("AT+HTTPINIT\r\n"));
 	result = _checkResponse(10000);
 	if(result != OK)
@@ -546,16 +584,56 @@ String BareBoneSim800::sendHTTPData(char *data)
 	gsmSerial.print(F("AT+HTTPREAD\r\n"));
 	String buffer = _readData();
 	delay(50);
+	closeHTTP();
 	return buffer;
-	
 }
 
-void BareBoneSim800::closeHTTP()
+// HTTP POST:
+// AT+HTTPINIT -> wait for OK
+// AT+HTTPPARA="CID",1 -> wait for OK
+// AT+HTTPPARA="URL","your.api.com" -> wait for OK
+// For example, if we have this body: {"location_id": 238, "fill_percent": 90}
+
+// AT+HTTPPARA="CONTENT","application/json"
+// AT+HTTPDATA=strlen(body),10000 -> wait for DOWNLOAD, then write the body and wait 10000
+// AT+HTTPSSL=0 -> wait for OK (1 when URL starts with "https://")
+// AT+HTTPACTION=1 -> wait for ,200,
+// AT+HTTPREAD -> read buffer and parse it
+// AT+HTTPTERM -> wait for OK
+// AT+SAPBR=0,1
+String BareBoneSim800::sendHTTPPost(char *data)
 {
-	// This close the TCP connection
-	gsmSerial.print("AT+HTTPTERM\r\n");
-	byte result = _checkResponse(10000);
-	delay(30);
+	closeHTTP();
+	// This function performs HTTP Client 
+ 	byte result;
+	gsmSerial.print(F("AT+HTTPINIT\r\n"));
+	result = _checkResponse(10000);
+	if(result != OK)
+		return "Error AT+HTTPINIT";
+	delay(5);
+	gsmSerial.print(F("AT+HTTPPARA=\"CID\",1\r\n"));
+	result = _checkResponse(10000);
+	if(result != OK)
+		return "Error CID,1";
+	delay(5);
+	gsmSerial.print(F("AT+HTTPPARA=\"URL\",\""));
+	gsmSerial.print(data);
+	gsmSerial.print(F("\"\r\n"));
+	result = _checkResponse(10000);
+	// if(result != OK)
+	// 	return "Error AT+HTTPPARA=URL";
+	// delay(5);
+	gsmSerial.print(F("AT+HTTPACTION=1\r\n"));
+	result= _checkResponse(100000);
+	Serial.print("Hello");
+	//if(result != OK)
+	//	return "";
+	delay(10);
+	result = _checkResponse(20000);
+	gsmSerial.print(F("AT+HTTPREAD\r\n"));
+	String buffer = _readData();
+	delay(50);
+	closeHTTP();
+	return buffer;
 }
-
 	
