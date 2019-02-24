@@ -77,11 +77,11 @@
  {
 	 private:
 	 // some variables to be used
-	   const char* _networkAPN;
+	  const char* _networkAPN;
 		const char* _userName;
 		const char* _passWord;
-	   static const uint8_t _responseInfoSize = 12; 
-	   const char* _responseInfo[_responseInfoSize] =
+	  static const uint8_t _responseInfoSize = 12; 
+	  const char* _responseInfo[_responseInfoSize] =
 				  {"ERROR",
 				  "NOT READY",
 				  "READY",

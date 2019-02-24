@@ -37,9 +37,9 @@
  
 
  #include "Arduino.h"
- #include "AltSoftSerial.h"
+//  #include "AltSoftSerial.h"
  #include "BareBoneSim800.h"
-//  #include "SoftwareSerial.h"
+ #include "SoftwareSerial.h"
  
  // Initialize the constructors
  BareBoneSim800::BareBoneSim800()
@@ -58,8 +58,8 @@
 	 _passWord = passWord;
  }
 
-// SoftwareSerial gsmSerial(8,9);
-AltSoftSerial gsmSerial;
+SoftwareSerial gsmSerial(8,9);
+// AltSoftSerial gsmSerial;
  
  
  // 
@@ -73,16 +73,20 @@ AltSoftSerial gsmSerial;
 	 //unsigned long count = 0;
 	 
 	 // loop through until their is a timeout or a response from the device
+	 
 	 while(millis()<t+timeout)
 	 {
 		 //count++;
 		 if(gsmSerial.available()) //check if the device is sending a message
 		 {
-			 String tempData = gsmSerial.readString(); // reads the response
+			 Serial.println("start serial reading");
+			 _response = gsmSerial.readString(); // reads the response
 			 if(DEBUG)
-				 Serial.println(tempData);
-			 char *mydataIn = strdup(tempData.c_str()); // convertss to char data from
-			 
+				 Serial.println(_response);
+				 _response.trim();
+				 Serial.println("finish serial reading");
+			//  char *mydataIn = strdup(_response.c_str()); // convertss to char data from
+			 	// String mydataIn = _response;
 		 /*
 		   * Checks for the status response
 		   * Response are - OK, ERROR, READY, >, CONNECT OK
@@ -101,11 +105,11 @@ AltSoftSerial gsmSerial;
 		   */
 		   for (byte i=0; i<_responseInfoSize; i++)
 		   {
-			if((strstr(mydataIn, _responseInfo[i])) != NULL)
-			{
-			  Status = i;
-			  return Status;
-			  }
+				if( _response.indexOf(_responseInfo[i]) != -1)
+				{
+					Status = i;
+					return Status;
+				}
 		   }
 		 }
 		 //Serial.println(count);
@@ -424,7 +428,7 @@ bool BareBoneSim800::dellAllSMS(){
 String BareBoneSim800::getTime(){
 	// This function is for get time & date from the network
 	// first enable the bearer profile
-	_enableBearerProfile();
+	// _enableBearerProfile();
 	gsmSerial.print(F("AT+CIPGSMLOC=2,1\r\n"));
 	String _buffer = _readData();
 	//Serial.println("sasd");
@@ -432,7 +436,7 @@ String BareBoneSim800::getTime(){
 	_buffer = _readData(); // This second read should work out
 	// here we disbale the bearer profile back
 	delay(100);
-	_disableBearerProfile();
+	// _disableBearerProfile();
 	if (_buffer.indexOf("0,") != -1){ // here we should fetch the result only if we get 0 and not error or some other numbers
 		return _buffer.substring(_buffer.indexOf("0,"),(_buffer.indexOf("OK")-4));
 	}
@@ -443,7 +447,7 @@ String BareBoneSim800::getTime(){
 String BareBoneSim800::getLocation(){
 	// this function is used for approximating the location for the device
 		// first enable the bearer profile
-	_enableBearerProfile();
+	// _enableBearerProfile();
 	gsmSerial.print(F("AT+CIPGSMLOC=1,1\r\n"));
 	String _buffer = _readData();
 	delay(10);
@@ -566,12 +570,12 @@ String BareBoneSim800::sendHTTPData(char *data)
 	delay(5);
 	gsmSerial.print(F("AT+HTTPPARA=\"CID\",1\r\n"));
 	result = _checkResponse(10000);
-	if(result != OK)
-		return "";
+	// if(result != OK)
+	// 	return "Error";
 	delay(5);
-	gsmSerial.print(F("AT+HTTPPARA=\"URL\","));
+	gsmSerial.print(F("AT+HTTPPARA=\"URL\",\""));
 	gsmSerial.print(data);
-	gsmSerial.print(F("\r\n"));
+	gsmSerial.print(F("\"\r\n"));
 	result = _checkResponse(10000);
 	if(result != OK)
 		return "";
@@ -617,24 +621,22 @@ String BareBoneSim800::sendHTTPPost(char *data)
 	if(result != OK)
 		return "Error CID,1";
 	delay(5);
+
 	gsmSerial.print(F("AT+HTTPPARA=\"URL\",\""));
 	gsmSerial.print(data);
 	gsmSerial.print(F("\"\r\n"));
 	result = _checkResponse(10000);
-	// if(result != OK)
-	// 	return "Error AT+HTTPPARA=URL";
-	// delay(5);
+	if(result != OK)
+		return "Error AT+HTTPPARA=URL";
+	delay(5);
 	gsmSerial.print(F("AT+HTTPACTION=1\r\n"));
 	result= _checkResponse(100000);
-	Serial.print("Hello");
-	//if(result != OK)
-	//	return "";
-	delay(10);
-	result = _checkResponse(20000);
+	result= _checkResponse(200000);
 	gsmSerial.print(F("AT+HTTPREAD\r\n"));
-	String buffer = _readData();
-	delay(50);
+	result= _checkResponse(100000);
+	String response = _response;
+	Serial.println(response);
 	closeHTTP();
-	return buffer;
+	return response;
 }
 	
